@@ -240,9 +240,7 @@ class FaceAuthorizationSystem:
             print("Tempo esgotado. Não foi possível capturar um rosto.")
             return False, None, None
 
-    def authorize_face(
-        self, camera_id=0, save_unauthorized=True
-    ):
+    def authorize_face(self, camera_id=0, save_unauthorized=True):
         """
         Captura e verifica se uma face está autorizada
 
@@ -257,7 +255,7 @@ class FaceAuthorizationSystem:
         if not os.path.exists(self.encodings_file):
             print("Erro: Nenhuma face autorizada encontrada.")
             return False, None
-        
+
         # Carrega os encodings autorizados
         self.names, self.authorized_encodings = self.load_or_generate_encodings()
 
@@ -325,7 +323,9 @@ class FaceAuthorizationSystem:
                 os.makedirs(self.access_logs_folder, exist_ok=True)
                 # Adiciona timestamp para evitar sobrescrever arquivos
                 timestamp = time.strftime("%Y%m%d-%H%M%S")
-                image_path = os.path.join(self.access_logs_folder, f"unauthorized_{timestamp}.jpg")
+                image_path = os.path.join(
+                    self.access_logs_folder, f"unauthorized_{timestamp}.jpg"
+                )
                 cv2.imwrite(image_path, frame)
                 print(f"Imagem da tentativa não autorizada salva como {image_path}")
             except Exception as e:
@@ -420,6 +420,7 @@ class FaceAuthorizationSystem:
         print("Sistema resetado com sucesso")
 
         return True
+
 
 # Exemplo de uso
 if __name__ == "__main__":
