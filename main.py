@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 import face_recognition
 import os
 import pickle
@@ -99,6 +100,34 @@ class FaceAuthorizationSystem:
 
         elapsed = time.time() - start_time
         print(f"Encodings gerados em {elapsed:.2f} segundos.")
+
+        return valid_names, encodings
+
+    def load_or_generate_encodings(self):
+        """Carrega encodings de um arquivo ou gera novos se o arquivo não existir."""
+        if os.path.exists(self.encodings_file):
+            print(f"Carregando encodings do arquivo {self.encodings_file}")
+            try:
+                with open(self.encodings_file, "rb") as f:
+                    data = pickle.load(f)
+                    print(
+                        f"Carregados {len(data['encodings'])} encodings de pessoas autorizadas."
+                    )
+                    return data["names"], data["encodings"]
+            except Exception as e:
+                print(f"Erro ao carregar encodings: {e}")
+
+        # Se não foi possível carregar, gera novos
+        images, names = self.load_images()
+        valid_names, encodings = self.generate_encodings(images, names)
+
+        # Salva para uso futuro
+        try:
+            with open(self.encodings_file, "wb") as f:
+                pickle.dump({"names": valid_names, "encodings": encodings}, f)
+            print(f"Encodings salvos em {self.encodings_file}")
+        except Exception as e:
+            print(f"Erro ao salvar encodings: {e}")
 
         return valid_names, encodings
 
@@ -211,6 +240,99 @@ class FaceAuthorizationSystem:
             print("Tempo esgotado. Não foi possível capturar um rosto.")
             return False, None, None
 
+    def authorize_face(
+        self, camera_id=0, save_unauthorized=True
+    ):
+        """
+        Captura e verifica se uma face está autorizada
+
+        Args:
+            camera_id: ID da câmera a ser usada (0 é a padrão)
+            save_unauthorized: Se True, salva imagem de tentativas não autorizadas
+
+        Returns:
+            tuple: (autorizado, nome_identificado) ou (False, None) se não autorizado
+        """
+        # Se não houver nenhuma face autorizada, não faz sentido continuar
+        if not os.path.exists(self.encodings_file):
+            print("Erro: Nenhuma face autorizada encontrada.")
+            return False, None
+        
+        # Carrega os encodings autorizados
+        self.names, self.authorized_encodings = self.load_or_generate_encodings()
+
+        # Primeiro captura uma face
+        success, frame, face_location = self.capture_face(camera_id=camera_id)
+
+        if not success:
+            return False, None
+
+        # Extraindo a face
+        x1, y1, x2, y2 = face_location
+        face_image = frame[y1:y2, x1:x2]
+
+        # Convertendo para RGB
+        rgb_face = cv2.cvtColor(face_image, cv2.COLOR_BGR2RGB)
+
+        # Obtendo o encoding da face capturada
+        face_encoding = face_recognition.face_encodings(rgb_face)
+
+        if not face_encoding:
+            print("Não foi possível extrair características do rosto capturado.")
+            return False, None
+
+        face_encoding = face_encoding[0]
+
+        matches = face_recognition.compare_faces(
+            self.authorized_encodings, face_encoding, tolerance=self.tolerance
+        )
+        face_distances = face_recognition.face_distance(
+            self.authorized_encodings, face_encoding
+        )
+
+        # Verifica se há qualquer correspondência
+        if True in matches:
+            best_match_index = np.argmin(face_distances)
+            name = self.names[best_match_index]
+
+            print(f"Acesso Autorizado: {name}")
+
+            return True, name
+
+        # Se chegou aqui, não está autorizado
+        print("Acesso Negado: Face não autorizada")
+
+        # Desenha no frame original
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        cv2.putText(
+            frame,
+            "DESCONHECIDO",
+            (x1, y1 - 10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (0, 0, 255),
+            2,
+        )
+
+        cv2.imshow("Acesso Negado", frame)
+        cv2.waitKey(2000)  # Mostra por 2 segundos
+        cv2.destroyAllWindows()
+
+        # Salva a imagem da tentativa não autorizada
+        if save_unauthorized:
+            try:
+                # Cria a pasta se não existir
+                os.makedirs(self.access_logs_folder, exist_ok=True)
+                # Adiciona timestamp para evitar sobrescrever arquivos
+                timestamp = time.strftime("%Y%m%d-%H%M%S")
+                image_path = os.path.join(self.access_logs_folder, f"unauthorized_{timestamp}.jpg")
+                cv2.imwrite(image_path, frame)
+                print(f"Imagem da tentativa não autorizada salva como {image_path}")
+            except Exception as e:
+                print(f"Erro ao salvar imagem não autorizada: {e}")
+
+        return False, None
+
     def add_authorized_person(self, name, camera_id=0):
         """
         Adiciona uma nova pessoa autorizada capturando sua face
@@ -280,7 +402,8 @@ if __name__ == "__main__":
     while True:
         print("\n===== Sistema de Autorização Facial =====")
         print("1. Adicionar pessoa autorizada")
-        print("2. Sair")
+        print("2. Verificar autorização")
+        print("3. Sair")
 
         choice = input("Escolha uma opção: ")
 
@@ -289,6 +412,9 @@ if __name__ == "__main__":
             auth_system.add_authorized_person(name)
 
         elif choice == "2":
+            auth_system.authorize_face()
+
+        elif choice == "3":
             print("Saindo...")
             break
 
