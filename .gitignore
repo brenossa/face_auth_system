@@ -1,0 +1,10 @@
+# Byte-compiled / optimized / DLL files
+venv/
+
+# Image files
+*.jpg
+*.jpeg
+*.png
+
+# Pickle files
+*.pkl
