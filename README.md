@@ -3,9 +3,11 @@
 Este é um sistema simples de autorização baseado em reconhecimento facial. Ele utiliza a biblioteca OpenCV para captura de imagens e face_recognition para comparar rostos com uma base de dados de imagens autorizadas.
 
 ## Requisitos
-Antes de rodar o sistema, instale as dependências necessárias:
+Antes de rodar o sistema, é importante que se tenha o conda instalado para carregar as dependências:
 ```bash
-pip install -r requirements.txt
+conda config --set channel_priority flexible
+conda env create -f environment.yml
+conda activate face_recognition
 ```
 
 ## Como Executar
