@@ -393,6 +393,33 @@ class FaceAuthorizationSystem:
             print(f"Erro ao adicionar pessoa autorizada: {e}")
             return False
 
+    def reset(self):
+        """Reseta o sistema removendo todas as pessoas autorizadas"""
+        # Verifica se o arquivo de encodings existe e remove
+        if os.path.exists(self.encodings_file):
+            os.remove(self.encodings_file)
+
+        # Verifica se a pasta de imagens existe e remove
+        if os.path.exists(self.images_folder):
+            files = os.listdir(self.images_folder)
+            for file in files:
+                os.remove(os.path.join(self.images_folder, file))
+            os.rmdir(self.images_folder)
+
+        # Verifica se a pasta de logs de acesso existe e remove
+        if os.path.exists(self.access_logs_folder):
+            files = os.listdir(self.access_logs_folder)
+            for file in files:
+                os.remove(os.path.join(self.access_logs_folder, file))
+            os.rmdir(self.access_logs_folder)
+
+        # Limpa as listas em memória
+        self.names = []
+        self.authorized_encodings = []
+
+        print("Sistema resetado com sucesso")
+
+        return True
 
 # Exemplo de uso
 if __name__ == "__main__":
@@ -403,7 +430,8 @@ if __name__ == "__main__":
         print("\n===== Sistema de Autorização Facial =====")
         print("1. Adicionar pessoa autorizada")
         print("2. Verificar autorização")
-        print("3. Sair")
+        print("3. Resetar sistema")
+        print("4. Sair")
 
         choice = input("Escolha uma opção: ")
 
@@ -415,6 +443,11 @@ if __name__ == "__main__":
             auth_system.authorize_face()
 
         elif choice == "3":
+            confirm = input("Tem certeza que deseja resetar o sistema? (s/n): ")
+            if confirm.lower() == "s":
+                auth_system.reset()
+
+        elif choice == "4":
             print("Saindo...")
             break
 
